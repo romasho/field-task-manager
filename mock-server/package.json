@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "scripts": {
+    "start": "json-server --watch db.json --host 0.0.0.0 --port 3000"
+  },
+  "devDependencies": {
+    "json-server": "^1.0.0-beta.3"
+  }
+}

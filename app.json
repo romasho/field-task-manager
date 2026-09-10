@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Field Task Manager",
+    "slug": "field-task-manager",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.assignment.fieldtaskmanager",
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Field Task Manager to access task images."
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-status-bar"
+    ],
+    "extra": {
+      "candidateCode": "SA-RN-5837"
+    }
+  }
+}
