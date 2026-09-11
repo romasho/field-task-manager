@@ -1,29 +1,137 @@
 {
   "tasks": [
     {
-      "id": "demo-task-1",
-      "title": "Inspect warehouse entrance",
-      "description": "Check access gate, safety signage and loading area.",
-      "dueAt": "2026-09-11T09:30:00.000Z",
+      "title": "todo",
+      "description": "123123asdasdasdasd",
+      "dueAt": "2026-09-11T12:22:07.451Z",
       "location": {
-        "address": "Alexanderplatz, Berlin",
-        "latitude": 52.5219,
-        "longitude": 13.4132
+        "address": "Minsk"
       },
-      "status": "New",
-      "createdAt": "2026-09-10T08:00:00.000Z",
-      "updatedAt": "2026-09-10T08:00:00.000Z",
+      "status": "Completed",
       "attachments": [],
+      "id": "1789125741359-pyncq7",
+      "createdAt": "2026-09-11T11:22:21.359Z",
+      "updatedAt": "2026-09-11T11:44:06.573Z",
       "history": [
         {
-          "id": "history-demo-1",
-          "taskId": "demo-task-1",
-          "timestamp": "2026-09-10T08:00:00.000Z",
+          "id": "1789127046573-a9j10x",
+          "taskId": "1789125741359-pyncq7",
+          "timestamp": "2026-09-11T11:44:06.573Z",
+          "action": "status_changed",
+          "description": "Status changed from In Progress to Completed"
+        },
+        {
+          "id": "1789126521123-7rz0iz",
+          "taskId": "1789125741359-pyncq7",
+          "timestamp": "2026-09-11T11:35:21.123Z",
+          "action": "status_changed",
+          "description": "Status changed from Completed to In Progress"
+        },
+        {
+          "id": "1789126463540-ouje48",
+          "taskId": "1789125741359-pyncq7",
+          "timestamp": "2026-09-11T11:34:23.540Z",
+          "action": "status_changed",
+          "description": "Status changed from In Progress to Completed"
+        },
+        {
+          "id": "1789126325958-uom3qw",
+          "taskId": "1789125741359-pyncq7",
+          "timestamp": "2026-09-11T11:32:05.958Z",
+          "action": "status_changed",
+          "description": "Status changed from New to In Progress"
+        },
+        {
+          "id": "1789125763792-20h530",
+          "taskId": "1789125741359-pyncq7",
+          "timestamp": "2026-09-11T11:22:43.792Z",
+          "action": "edited",
+          "description": "Task details updated"
+        },
+        {
+          "id": "1789125741359-qluajo",
+          "taskId": "1789125741359-pyncq7",
+          "timestamp": "2026-09-11T11:22:21.359Z",
           "action": "created",
           "description": "Task created"
         }
-      ]
+      ],
+      "syncState": "Synced"
+    },
+    {
+      "title": "Test sync",
+      "description": "1",
+      "dueAt": "2026-09-11T12:29:24.429Z",
+      "location": {
+        "address": "1231",
+        "name": "Minsk, Belarus",
+        "latitude": 53.9006,
+        "longitude": 27.559
+      },
+      "status": "Completed",
+      "attachments": [],
+      "id": "1789126181841-nsvowh",
+      "createdAt": "2026-09-11T11:29:41.841Z",
+      "updatedAt": "2026-09-11T11:48:24.889Z",
+      "history": [
+        {
+          "id": "1789127304889-crqgze",
+          "taskId": "1789126181841-nsvowh",
+          "timestamp": "2026-09-11T11:48:24.889Z",
+          "action": "status_changed",
+          "description": "Status changed from In Progress to Completed"
+        },
+        {
+          "id": "1789126885141-jwedip",
+          "taskId": "1789126181841-nsvowh",
+          "timestamp": "2026-09-11T11:41:25.141Z",
+          "action": "status_changed",
+          "description": "Status changed from Completed to In Progress"
+        },
+        {
+          "id": "1789126722640-le892w",
+          "taskId": "1789126181841-nsvowh",
+          "timestamp": "2026-09-11T11:38:42.640Z",
+          "action": "status_changed",
+          "description": "Status changed from New to Completed"
+        },
+        {
+          "id": "1789126181841-22z3pr",
+          "taskId": "1789126181841-nsvowh",
+          "timestamp": "2026-09-11T11:29:41.841Z",
+          "action": "created",
+          "description": "Task created"
+        }
+      ],
+      "syncState": "Synced"
+    },
+    {
+      "title": "te",
+      "description": "123",
+      "dueAt": "2026-09-11T13:00:13.468Z",
+      "location": {
+        "address": "Chongqing, China",
+        "name": "Chongqing, China",
+        "latitude": 29.4316,
+        "longitude": 106.9123
+      },
+      "status": "New",
+      "attachments": [],
+      "id": "1789128063743-e9myg0",
+      "createdAt": "2026-09-11T12:01:03.743Z",
+      "updatedAt": "2026-09-11T12:01:03.743Z",
+      "history": [
+        {
+          "id": "1789128063743-unwyr2",
+          "taskId": "1789128063743-e9myg0",
+          "timestamp": "2026-09-11T12:01:03.743Z",
+          "action": "created",
+          "description": "Task created"
+        }
+      ],
+      "syncState": "Synced"
     }
   ],
-  "logs": []
+  "logs": [],
+  "$schema": "./node_modules/json-server/schema.json"
 }

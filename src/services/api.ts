@@ -5,7 +5,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:3000';
 async function request(path: string, options?: RequestInit) {
   const response = await fetch(`${API_URL}${path}`, {
     headers: { 'Content-Type': 'application/json', ...(options?.headers || {}) },
-    ...options
+    ...options,
   });
   if (!response.ok) throw new Error(`Mock server returned ${response.status}`);
   return response;
@@ -19,10 +19,20 @@ export async function fetchRemoteTasks(): Promise<Task[]> {
 export async function upsertRemoteTask(task: Task) {
   await request(`/tasks/${task.id}`, {
     method: 'PUT',
-    body: JSON.stringify(task)
+    body: JSON.stringify(task),
+  });
+}
+
+export async function createRemoteTask(task: Task) {
+  await request('/tasks', {
+    method: 'POST',
+    body: JSON.stringify(task),
   });
 }
 
 export async function deleteRemoteTask(id: string) {
-  await request(`/tasks/${id}`, { method: 'DELETE' });
+  const response = await fetch(`${API_URL}/tasks/${id}`, { method: 'DELETE' });
+  // A task that was never uploaded has nothing to delete remotely.
+  if (!response.ok && response.status !== 404)
+    throw new Error(`Mock server returned ${response.status}`);
 }

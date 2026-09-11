@@ -23,7 +23,7 @@ Field Task Manager is an offline-first Android task application for field employ
 - Persistent history for creation, edits, status changes, attachment changes, deletion and sync.
 - Offline task operations through AsyncStorage.
 - Mock REST synchronization with `json-server`.
-- Sync states: Pending Sync, Synced, Sync Failed (the last state is supported by the model and can be surfaced by a future retry UI).
+- Sync states: Pending Sync, Synced, Sync Failed. Failed requests are marked visibly and retried when connectivity returns or the user taps Sync.
 - Light/dark theme toggle.
 - Accessibility labels on primary interactive task controls.
 
@@ -32,9 +32,9 @@ Field Task Manager is an offline-first Android task application for field employ
 - **UI:** React Navigation + small reusable components.
 - **State management:** Zustand. It keeps task mutations and app state straightforward without introducing a large Redux layer.
 - **Local storage:** AsyncStorage. The assignment data volume is intentionally small, and JSON persistence keeps the sample easy to inspect. SQLite would be a better choice for a very large task/history dataset.
-- **Sync:** `src/services/sync.ts` owns connectivity checks and mock REST synchronization. The selected conflict policy is last-write-wins using `updatedAt`.
+- **Sync:** `src/services/sync.ts` owns connectivity checks and mock REST synchronization. The selected conflict policy is last-write-wins using `updatedAt`; locally deleted task IDs remain in a small outbox until the server confirms their deletion.
 - **Notifications:** `src/services/notifications.ts` owns permission handling and reminder scheduling.
-- **Map/location:** `react-native-maps`. Manual address entry is mandatory. Coordinate support is represented in the task model and the seeded mock data; the map displays markers for tasks that have coordinates.
+- **Map/location:** MapLibre renders OpenStreetMap tiles without a Google Maps key. Manual Location entry is required; coordinates are optional and can be entered manually, selected from a predefined list, or chosen by tapping the map. The map displays markers for tasks that have coordinates.
 - **Attachments:** Expo Image Picker stores local URI and metadata in the task record. The image itself remains in the OS/app media storage.
 - **History:** Each task contains task-local history and the global local store maintains an aggregated history list.
 
@@ -127,12 +127,20 @@ Normal task creation schedules a reminder for 30 minutes before the due time.
 
 If the due time is less than 30 minutes away, the app uses a one-minute fallback rather than silently dropping the reminder.
 
-On a task detail screen, **Demo alert** schedules the notification after 45 seconds. This is intended for the video demonstration.
+Enable **Demo notification mode** in Settings to make the next saved task schedule the same reminder flow after 45 seconds. On a task detail screen, **Demo alert** can also trigger a 45-second reminder directly. This is intended for the video demonstration.
 
 Notification permission must be granted on the Android device.
 
 ## Map
 
-The map uses `react-native-maps`. No Google Maps API key is required for the basic Android configuration used here on supported Expo builds. The mock seed contains a task at Alexanderplatz with latitude/longitude so the reviewer can immediately see a marker.
+The Android map uses MapLibre and OpenStreetMap raster tiles. No Google Cloud project, API key, or billing account is required. The map keeps the OpenStreetMap attribution visible and only loads tiles for the area the user is viewing.
+
+The map form supports manual coordinate entry, a small predefined list of locations, and point selection by tapping the map. Real geocoding is intentionally not required: the task address remains a required manual field.
+
+```powershell
+npm run android
+```
+
+The mock seed contains a task at Alexanderplatz with latitude/longitude so the reviewer can immediately see a marker.
 
 Manual address input is always required. The current implementation does not perform automatic geocoding. Tasks created manually without coordinates still work normally; they simply do not appear as map markers.

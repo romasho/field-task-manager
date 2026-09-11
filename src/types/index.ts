@@ -1,6 +1,7 @@
 export type TaskStatus = 'New' | 'In Progress' | 'Completed' | 'Cancelled';
 export type SyncState = 'Pending Sync' | 'Synced' | 'Sync Failed';
 export type SortMode = 'dateAdded' | 'dueDate' | 'status';
+export type SortDirection = 'asc' | 'desc';
 
 export type Attachment = {
   id: string;
