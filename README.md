@@ -152,3 +152,7 @@ npm run android
 The mock seed contains a task at Alexanderplatz with latitude/longitude so the reviewer can immediately see a marker.
 
 Manual address input is always required. The current implementation does not perform automatic geocoding. Tasks created manually without coordinates still work normally; they simply do not appear as map markers.
+
+## AI/tooling disclosure
+
+AI assistants were used to help scaffold the project, draft portions of the TypeScript implementation and documentation, and review implementation ideas. The final code and technical decisions were reviewed and understood by the author.
