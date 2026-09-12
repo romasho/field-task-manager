@@ -9,8 +9,9 @@
     "web": "expo start --web",
     "mock-server": "json-server --watch mock-server/db.json --host 0.0.0.0 --port 3000",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write App.tsx src package.json tsconfig.json .prettierrc.json",
-    "format:check": "prettier --check App.tsx src package.json tsconfig.json .prettierrc.json",
+    "test": "node --test tests/core.test.cjs",
+    "format": "prettier --write App.tsx src tests package.json tsconfig.json .prettierrc.json",
+    "format:check": "prettier --check App.tsx src tests package.json tsconfig.json .prettierrc.json",
     "build:apk": "eas build --platform android --profile preview"
   },
   "dependencies": {
@@ -26,6 +27,7 @@
     "expo-dev-client": "~57.0.18",
     "expo-document-picker": "~57.0.1",
     "expo-image-picker": "~57.0.16",
+    "expo-location": "~57.0.17",
     "expo-notifications": "~57.0.17",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.3",

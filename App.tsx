@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { Text } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -13,8 +13,9 @@ import TaskDetailScreen from './src/screens/TaskDetailScreen';
 import MapScreen from './src/screens/MapScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import { RootStackParamList } from './src/types/navigation';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator();
 
 function TabsNavigator() {
@@ -79,10 +80,11 @@ function TabsNavigator() {
 export default function App() {
   const initialize = useAppStore(s => s.initialize);
   const initialized = useAppStore(s => s.initialized);
+  const initializationError = useAppStore(s => s.initializationError);
   const sync = useAppStore(s => s.sync);
   const theme = useAppStore(s => s.theme);
   useEffect(() => {
-    initialize();
+    void initialize();
   }, [initialize]);
 
   useEffect(() => {
@@ -92,6 +94,27 @@ export default function App() {
       }
     });
   }, [initialized, sync]);
+
+  if (!initialized) {
+    return (
+      <View style={styles.startupState}>
+        <ActivityIndicator color={colors.primary} />
+        <Text style={styles.startupText}>Loading local tasks…</Text>
+      </View>
+    );
+  }
+
+  if (initializationError) {
+    return (
+      <View style={styles.startupState}>
+        <Text style={styles.startupTitle}>Unable to load local data</Text>
+        <Text style={styles.startupText}>{initializationError}</Text>
+        <Pressable style={styles.retryButton} onPress={() => void initialize()}>
+          <Text style={styles.retryText}>Try again</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer theme={theme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -108,3 +131,23 @@ export default function App() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  startupState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: colors.light.background,
+  },
+  startupTitle: { fontSize: 20, fontWeight: '800', color: colors.light.text },
+  startupText: { marginTop: 10, color: colors.light.muted, textAlign: 'center' },
+  retryButton: {
+    marginTop: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+  },
+  retryText: { color: '#fff', fontWeight: '800' },
+});

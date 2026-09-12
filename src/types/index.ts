@@ -39,3 +39,5 @@ export type Task = {
   history: HistoryItem[];
   syncState: SyncState;
 };
+
+export type TaskInput = Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'history' | 'syncState'>;

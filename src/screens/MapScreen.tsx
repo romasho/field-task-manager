@@ -4,8 +4,9 @@ import { Camera, Marker } from '@maplibre/maplibre-react-native';
 import { useAppStore } from '../store/useAppStore';
 import { useAppTheme } from '../theme/useAppTheme';
 import { OPEN_STREET_MAP_STYLE, OpenStreetMap } from '../components/OpenStreetMap';
+import { RootNavigation } from '../types/navigation';
 
-export default function MapScreen({ navigation }: any) {
+export default function MapScreen({ navigation }: { navigation: RootNavigation }) {
   const tasks = useAppStore(s => s.tasks).filter(
     t => Number.isFinite(t.location.latitude) && Number.isFinite(t.location.longitude)
   );

@@ -4,8 +4,9 @@ import { useAppStore } from '../store/useAppStore';
 import { Screen } from '../components/Screen';
 import TaskCard from '../components/TaskCard';
 import { useAppTheme } from '../theme/useAppTheme';
+import { RootNavigation } from '../types/navigation';
 
-export default function HomeScreen({ navigation }: any) {
+export default function HomeScreen({ navigation }: { navigation: RootNavigation }) {
   const tasks = useAppStore(s => s.tasks);
   const sortMode = useAppStore(s => s.sortMode);
   const setSortMode = useAppStore(s => s.setSortMode);

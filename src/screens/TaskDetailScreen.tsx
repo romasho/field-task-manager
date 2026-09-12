@@ -6,11 +6,11 @@ import { Screen } from '../components/Screen';
 import { StatusSelect } from '../components/StatusSelect';
 import { OPEN_STREET_MAP_STYLE, OpenStreetMap } from '../components/OpenStreetMap';
 import { useAppStore } from '../store/useAppStore';
-import { scheduleDemoReminder } from '../services/notifications';
 import { useAppTheme } from '../theme/useAppTheme';
 import { Attachment } from '../types';
+import { TaskDetailScreenProps } from '../types/navigation';
 
-export default function TaskDetailScreen({ navigation, route }: any) {
+export default function TaskDetailScreen({ navigation, route }: TaskDetailScreenProps) {
   const task = useAppStore(s => s.tasks.find(t => t.id === route.params.taskId));
   const updateStatus = useAppStore(s => s.updateStatus);
   const addAttachment = useAppStore(s => s.addAttachment);
@@ -26,20 +26,28 @@ export default function TaskDetailScreen({ navigation, route }: any) {
     );
 
   async function addImage() {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-    if (result.canceled) return;
-    const asset = result.assets[0];
-    await addAttachment(task!.id, {
-      id: `${Date.now()}`,
-      uri: asset.uri,
-      name: asset.fileName || `image-${Date.now()}.jpg`,
-      mimeType: asset.mimeType,
-      size: asset.fileSize,
-      createdAt: new Date().toISOString(),
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      if (!asset) throw new Error('The image picker returned no image.');
+      await addAttachment(task!.id, {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        uri: asset.uri,
+        name: asset.fileName || `image-${Date.now()}.jpg`,
+        mimeType: asset.mimeType,
+        size: asset.fileSize,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      Alert.alert(
+        'Unable to add image',
+        error instanceof Error ? error.message : 'Please try again.'
+      );
+    }
   }
 
   function remove() {
@@ -49,8 +57,15 @@ export default function TaskDetailScreen({ navigation, route }: any) {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await deleteTask(task!.id);
-          navigation.goBack();
+          try {
+            await deleteTask(task!.id);
+            navigation.goBack();
+          } catch (error) {
+            Alert.alert(
+              'Delete incomplete',
+              error instanceof Error ? error.message : 'Please try again.'
+            );
+          }
         },
       },
     ]);
@@ -116,26 +131,6 @@ export default function TaskDetailScreen({ navigation, route }: any) {
         >
           <Text style={{ color: theme.text }}>Add image</Text>
         </Pressable>
-        <Pressable
-          style={[styles.secondary, { backgroundColor: theme.surface, borderColor: theme.border }]}
-          onPress={() =>
-            scheduleDemoReminder(task.id, task.title)
-              .then(() =>
-                Alert.alert(
-                  'Demo reminder scheduled',
-                  'A notification will appear in about 45 seconds.'
-                )
-              )
-              .catch(e =>
-                Alert.alert(
-                  'Notification unavailable',
-                  e?.message || 'Enable notifications in device settings and try again.'
-                )
-              )
-          }
-        >
-          <Text style={{ color: theme.text }}>Demo alert</Text>
-        </Pressable>
       </View>
       <Text style={[styles.section, { color: theme.text }]}>Attachments</Text>
       {task.attachments.length === 0 ? (
@@ -161,7 +156,16 @@ export default function TaskDetailScreen({ navigation, route }: any) {
                 </Text>
                 <Text style={[styles.previewHint, { color: theme.muted }]}>Tap to preview</Text>
               </Pressable>
-              <Pressable onPress={() => removeAttachment(task.id, a.id)}>
+              <Pressable
+                onPress={() =>
+                  removeAttachment(task.id, a.id).catch(error =>
+                    Alert.alert(
+                      'Unable to remove image',
+                      error instanceof Error ? error.message : 'Please try again.'
+                    )
+                  )
+                }
+              >
                 <Text style={styles.deleteText}>Remove</Text>
               </Pressable>
             </View>

@@ -17,7 +17,7 @@ Field Task Manager is an offline-first Android task application for field employ
 - Image attachment using the device gallery.
 - Graceful attachment rendering: inaccessible URIs do not prevent the task itself from loading.
 - Local push reminder 30 minutes before due time.
-- If the reminder time is already in the past, the app schedules a fallback one minute from now.
+- If the reminder time is already in the past, the app schedules a fallback within one minute and never later than the due time.
 - Demo notification action schedules the same notification style after 45 seconds.
 - Map markers for tasks containing coordinates. The seeded demo task has coordinates.
 - Persistent history for creation, edits, status changes, attachment changes, deletion and sync.
@@ -34,6 +34,8 @@ Field Task Manager is an offline-first Android task application for field employ
 - **Local storage:** AsyncStorage. The assignment data volume is intentionally small, and JSON persistence keeps the sample easy to inspect. SQLite would be a better choice for a very large task/history dataset.
 - **Sync:** `src/services/sync.ts` owns connectivity checks and mock REST synchronization. The selected conflict policy is last-write-wins using `updatedAt`; locally deleted task IDs remain in a small outbox until the server confirms their deletion.
 - **Notifications:** `src/services/notifications.ts` owns permission handling and reminder scheduling.
+- **Task workflow:** `src/services/taskWorkflow.ts` coordinates validation, persistence and reminders without coupling that logic to the form UI.
+- **Storage validation:** persisted and remote task payloads are validated before they enter application state.
 - **Map/location:** MapLibre renders OpenStreetMap tiles without a Google Maps key. Manual Location entry is required; coordinates are optional and can be entered manually, selected from a predefined list, or chosen by tapping the map. The map displays markers for tasks that have coordinates.
 - **Attachments:** Expo Image Picker stores local URI and metadata in the task record. The image itself remains in the OS/app media storage.
 - **History:** Each task contains task-local history and the global local store maintains an aggregated history list.
@@ -69,6 +71,12 @@ Type-check:
 
 ```bash
 npm run typecheck
+```
+
+Run the core unit tests:
+
+```bash
+npm test
 ```
 
 ## Mock REST server
@@ -125,11 +133,11 @@ The repository intentionally uses `android.buildType: apk` for the preview profi
 
 Normal task creation schedules a reminder for 30 minutes before the due time.
 
-If the due time is less than 30 minutes away, the app uses a one-minute fallback rather than silently dropping the reminder.
+If the due time is less than 30 minutes away, the app schedules a fallback up to one minute from now. For tasks due sooner than one minute, it schedules at the due time so the reminder never arrives after the deadline.
 
-Enable **Demo notification mode** in Settings to make the next saved task schedule the same reminder flow after 45 seconds. On a task detail screen, **Demo alert** can also trigger a 45-second reminder directly. This is intended for the video demonstration.
+Enable **Demo notification mode** in Settings to make the next saved task use the same notification flow after 45 seconds. Demo mode replaces the regular reminder for that save, ensuring that each task has only one scheduled notification. This is intended for the video demonstration.
 
-Notification permission must be granted on the Android device.
+Notification permission must be granted on the Android device. The app requests it when a reminder is first scheduled and reports a clear error if permission is denied or scheduling fails.
 
 ## Map
 

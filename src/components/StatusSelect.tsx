@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { TaskStatus } from '../types';
 import { colors } from '../theme/colors';
 import { useAppTheme } from '../theme/useAppTheme';
@@ -30,10 +30,22 @@ export function StatusSelect({
 }: Props) {
   const theme = useAppTheme();
   const [open, setOpen] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   async function selectStatus(status: TaskStatus) {
     setOpen(false);
-    if (status !== value) await onChange(status);
+    if (status === value) return;
+    setUpdating(true);
+    try {
+      await onChange(status);
+    } catch (error) {
+      Alert.alert(
+        'Unable to update status',
+        error instanceof Error ? error.message : 'Please try again.'
+      );
+    } finally {
+      setUpdating(false);
+    }
   }
 
   return (
@@ -41,8 +53,8 @@ export function StatusSelect({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Task status: ${value}. Change status`}
-        accessibilityState={{ disabled, expanded: open }}
-        disabled={disabled}
+        accessibilityState={{ disabled: disabled || updating, expanded: open }}
+        disabled={disabled || updating}
         onPress={() => setOpen(true)}
         style={[
           styles.trigger,

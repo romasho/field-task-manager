@@ -1,7 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -12,14 +11,21 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Camera, Marker } from '@maplibre/maplibre-react-native';
-import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { Screen } from '../components/Screen';
 import { StatusSelect } from '../components/StatusSelect';
 import { OPEN_STREET_MAP_STYLE, OpenStreetMap } from '../components/OpenStreetMap';
 import { useAppStore } from '../store/useAppStore';
-import { Attachment, TaskStatus } from '../types';
+import { Attachment, TaskInput, TaskStatus } from '../types';
 import { useAppTheme } from '../theme/useAppTheme';
-import { scheduleTaskReminder } from '../services/notifications';
+import { getTaskValidationError, saveTaskWithReminder } from '../services/taskWorkflow';
+import { TaskFormScreenProps } from '../types/navigation';
+import { TaskAttachmentEditor } from '../components/TaskAttachmentEditor';
+import {
+  DEMO_DELAY_SECONDS,
+  FALLBACK_DELAY_MINUTES,
+  REMINDER_LEAD_MINUTES,
+} from '../utils/reminderSchedule';
 
 const TOP_CITIES = [
   { name: 'Tokyo, Japan', latitude: 35.6762, longitude: 139.6503 },
@@ -34,7 +40,7 @@ const TOP_CITIES = [
   { name: 'Chongqing, China', latitude: 29.4316, longitude: 106.9123 },
 ];
 
-export default function TaskFormScreen({ navigation, route }: any) {
+export default function TaskFormScreen({ navigation, route }: TaskFormScreenProps) {
   const existingId = route.params?.taskId;
   const existing = useAppStore(s => s.tasks.find(t => t.id === existingId));
   const createTask = useAppStore(s => s.createTask);
@@ -65,20 +71,92 @@ export default function TaskFormScreen({ navigation, route }: any) {
   const [selectedCity, setSelectedCity] = useState<string | null>(
     TOP_CITIES.find(city => city.name === existing?.location.address)?.name || null
   );
-  const editing = Boolean(existing);
-  const valid = useMemo(
-    () =>
-      Boolean(title.trim() && description.trim() && address.trim() && dueAt.getTime() > Date.now()),
-    [title, description, address, dueAt]
+  const [locationHint, setLocationHint] = useState<string | null>(null);
+  const locationWasSetManually = useRef(Boolean(existing?.location.latitude));
+  const editing = existingId !== undefined;
+  const draft = useMemo<TaskInput>(
+    () => ({
+      title,
+      description,
+      dueAt: Number.isFinite(dueAt.getTime()) ? dueAt.toISOString() : '',
+      location: { address, ...coordinates },
+      status,
+      attachments,
+    }),
+    [address, attachments, coordinates, description, dueAt, status, title]
   );
+  const valid = getTaskValidationError(draft) === null;
 
-  function selectCoordinates(nextCoordinates: { latitude: number; longitude: number }) {
+  useEffect(() => {
+    if (editing) return;
+    let cancelled = false;
+    loadDeviceLocation(() => cancelled);
+    return () => {
+      cancelled = true;
+    };
+  }, [editing]);
+
+  if (editing && !existing) {
+    return (
+      <Screen>
+        <Text style={{ color: theme.text }}>This task is no longer available.</Text>
+        <Pressable style={styles.save} onPress={() => navigation.goBack()}>
+          <Text style={styles.saveText}>Go back</Text>
+        </Pressable>
+      </Screen>
+    );
+  }
+
+  function selectCoordinates(
+    nextCoordinates: { latitude: number; longitude: number },
+    fromDevice = false
+  ) {
+    if (!fromDevice) locationWasSetManually.current = true;
     setCoordinates(nextCoordinates);
     setLatitudeText(String(nextCoordinates.latitude));
     setLongitudeText(String(nextCoordinates.longitude));
   }
 
+  async function loadDeviceLocation(isCancelled = () => false, force = false) {
+    setLocationHint('Getting device location…');
+    const permission = await Location.requestForegroundPermissionsAsync();
+    if (permission.status !== 'granted') {
+      if (!isCancelled())
+        setLocationHint('Location permission was not granted. Enter coordinates or choose a city.');
+      return;
+    }
+
+    try {
+      const lastKnown = await Location.getLastKnownPositionAsync({
+        maxAge: 5 * 60 * 1000,
+        requiredAccuracy: 1_000,
+      });
+      const position =
+        lastKnown ||
+        (await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Location request timed out.')), 10_000)
+          ),
+        ]));
+      if (!isCancelled() && (force || !locationWasSetManually.current)) {
+        selectCoordinates(
+          {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          },
+          true
+        );
+        setLocationHint('Coordinates filled from the device location.');
+      }
+    } catch {
+      if (!isCancelled())
+        setLocationHint('Device location is unavailable. Enter coordinates or choose a city.');
+    }
+  }
+
   function updateManualCoordinates(nextLatitude: string, nextLongitude: string) {
+    locationWasSetManually.current = true;
     setSelectedCity(null);
     setLatitudeText(nextLatitude);
     setLongitudeText(nextLongitude);
@@ -105,78 +183,28 @@ export default function TaskFormScreen({ navigation, route }: any) {
     setCityPickerOpen(false);
   }
 
-  async function addImages() {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsMultipleSelection: true,
-        quality: 0.8,
-      });
-      if (result.canceled) return;
-
-      const createdAt = new Date().toISOString();
-      setAttachments(current => [
-        ...current,
-        ...result.assets.map((asset, index) => ({
-          id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
-          uri: asset.uri,
-          name: asset.fileName || `image-${Date.now()}-${index + 1}.jpg`,
-          mimeType: asset.mimeType,
-          size: asset.fileSize,
-          createdAt,
-        })),
-      ]);
-    } catch (error: any) {
-      Alert.alert('Unable to add images', error?.message || 'Please try again.');
-    }
-  }
-
   async function save() {
-    if (!title.trim()) return Alert.alert('Validation', 'Task title is required.');
-    if (!description.trim()) return Alert.alert('Validation', 'Task description is required.');
-    if (!address.trim()) return Alert.alert('Validation', 'Location address is required.');
-    if (dueAt.getTime() <= Date.now())
-      return Alert.alert('Validation', 'Due date/time must be in the future.');
+    const validationError = getTaskValidationError(draft);
+    if (validationError) return Alert.alert('Validation', validationError);
     try {
-      let taskId: string;
-      if (editing) {
-        await updateTask(existing!.id, {
-          title: title.trim(),
-          description: description.trim(),
-          dueAt: dueAt.toISOString(),
-          location: { address: address.trim(), ...coordinates },
-          status,
-          attachments,
-        });
-        taskId = existing!.id;
-      } else {
-        const task = await createTask({
-          title: title.trim(),
-          description: description.trim(),
-          dueAt: dueAt.toISOString(),
-          location: { address: address.trim(), ...coordinates },
-          status,
-          attachments,
-        });
-        taskId = task.id;
-      }
-      try {
-        const reminder = await scheduleTaskReminder(taskId, title.trim(), dueAt.toISOString(), {
-          demo: demoNotifications,
-        });
+      const { reminder, reminderError } = await saveTaskWithReminder(
+        { draft, existingTaskId: existingId, demoNotifications },
+        { createTask, updateTask }
+      );
+      if (reminderError) {
+        Alert.alert('Task saved, reminder unavailable', reminderError.message);
+      } else if (reminder) {
         if (demoNotifications) {
-          Alert.alert('Demo reminder scheduled', 'A notification will appear in about 45 seconds.');
+          Alert.alert(
+            'Demo reminder scheduled',
+            `A notification will appear in about ${DEMO_DELAY_SECONDS} seconds.`
+          );
         } else if (reminder.usesFallback) {
           Alert.alert(
-            'Reminder scheduled in one minute',
-            'The task is due in less than 30 minutes, so the usual 30-minute reminder is already in the past.'
+            `Reminder scheduled in ${FALLBACK_DELAY_MINUTES} minute`,
+            `The task is due in less than ${REMINDER_LEAD_MINUTES} minutes, so the usual ${REMINDER_LEAD_MINUTES}-minute reminder is already in the past.`
           );
         }
-      } catch (notificationError: any) {
-        Alert.alert(
-          'Task saved, reminder unavailable',
-          notificationError?.message || 'Enable notifications in device settings and try again.'
-        );
       }
       navigation.goBack();
     } catch (e: any) {
@@ -210,42 +238,7 @@ export default function TaskFormScreen({ navigation, route }: any) {
         multiline
         placeholder="What needs to be done?"
       />
-      <Text style={[styles.label, { color: theme.text }]}>Attachments (optional)</Text>
-      <Text style={[styles.hint, { color: theme.muted }]}>
-        Add photos before creating the task.
-      </Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Add task images"
-        style={[styles.addImages, { backgroundColor: theme.surface, borderColor: theme.border }]}
-        onPress={addImages}
-      >
-        <Text style={{ color: theme.text }}>Add images</Text>
-      </Pressable>
-      {attachments.length > 0 && (
-        <View style={styles.attachmentList}>
-          {attachments.map(attachment => (
-            <View
-              key={attachment.id}
-              style={[styles.attachment, { backgroundColor: theme.surface }]}
-            >
-              <Image source={{ uri: attachment.uri }} style={styles.attachmentImage} />
-              <Text style={[styles.attachmentName, { color: theme.text }]} numberOfLines={1}>
-                {attachment.name}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Remove ${attachment.name}`}
-                onPress={() =>
-                  setAttachments(current => current.filter(item => item.id !== attachment.id))
-                }
-              >
-                <Text style={styles.removeAttachment}>Remove</Text>
-              </Pressable>
-            </View>
-          ))}
-        </View>
-      )}
+      <TaskAttachmentEditor attachments={attachments} onChange={setAttachments} />
       <Text style={[styles.label, { color: theme.text }]}>Location *</Text>
       <TextInput
         style={[
@@ -261,6 +254,17 @@ export default function TaskFormScreen({ navigation, route }: any) {
       <Text style={[styles.hint, { color: theme.muted }]}>
         Enter latitude and longitude, choose a city, or tap the map. Choosing a city fills Location.
       </Text>
+      {locationHint && (
+        <Text style={[styles.locationHint, { color: theme.muted }]}>{locationHint}</Text>
+      )}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Refresh device location"
+        style={[styles.refreshLocation, { borderColor: theme.border }]}
+        onPress={() => loadDeviceLocation(() => false, true)}
+      >
+        <Text style={{ color: theme.text }}>Use current device location</Text>
+      </Pressable>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`City location: ${selectedCity || 'not selected'}. Choose a city`}
@@ -437,18 +441,15 @@ const styles = StyleSheet.create({
   },
   multiline: { minHeight: 110, textAlignVertical: 'top' },
   hint: { color: '#6B7280', fontSize: 13, marginBottom: 8 },
-  addImages: {
+  locationHint: { fontSize: 13, marginBottom: 8 },
+  refreshLocation: {
     alignSelf: 'flex-start',
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
+    borderRadius: 9,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    marginBottom: 10,
   },
-  attachmentList: { gap: 8, marginTop: 10 },
-  attachment: { flexDirection: 'row', alignItems: 'center', borderRadius: 10, padding: 8, gap: 9 },
-  attachmentImage: { width: 44, height: 44, borderRadius: 7 },
-  attachmentName: { flex: 1, fontSize: 13 },
-  removeAttachment: { color: '#DC2626', fontWeight: '700', fontSize: 13 },
   map: { height: 220, borderRadius: 10, overflow: 'hidden' },
   coordinateRow: { flexDirection: 'row', gap: 10 },
   coordinateInput: { flex: 1, borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 16 },

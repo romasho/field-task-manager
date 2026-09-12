@@ -1,9 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-
-const REMINDER_LEAD_MS = 30 * 60 * 1000;
-const FALLBACK_DELAY_MS = 60 * 1000;
-const DEMO_DELAY_SECONDS = 45;
+import { createReminderPlan } from '../utils/reminderSchedule';
 
 type ScheduleOptions = { demo?: boolean };
 
@@ -22,6 +19,12 @@ Notifications.setNotificationHandler({
 });
 
 export async function configureNotifications() {
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('tasks', {
+      name: 'Task reminders',
+      importance: Notifications.AndroidImportance.HIGH,
+    });
+  }
   const permissions = await Notifications.getPermissionsAsync();
   if (!permissions.granted) {
     const requested = await Notifications.requestPermissionsAsync();
@@ -31,22 +34,13 @@ export async function configureNotifications() {
       );
     }
   }
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('tasks', {
-      name: 'Task reminders',
-      importance: Notifications.AndroidImportance.HIGH,
-    });
-  }
 }
 
-async function cancelTaskReminders(taskId: string, kind: 'task' | 'demo') {
+export async function cancelTaskReminders(taskId: string) {
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   await Promise.all(
     scheduled
-      .filter(
-        notification =>
-          notification.content.data?.taskId === taskId && notification.content.data?.kind === kind
-      )
+      .filter(notification => notification.content.data?.taskId === taskId)
       .map(notification => Notifications.cancelScheduledNotificationAsync(notification.identifier))
   );
 }
@@ -57,34 +51,21 @@ export async function scheduleTaskReminder(
   dueAt: string,
   { demo = false }: ScheduleOptions = {}
 ): Promise<ReminderScheduleResult> {
+  createReminderPlan(dueAt, Date.now(), demo);
   await configureNotifications();
-  await cancelTaskReminders(taskId, demo ? 'demo' : 'task');
-  const due = new Date(dueAt).getTime();
-  if (!Number.isFinite(due)) throw new Error('The task due date is invalid.');
-  const now = Date.now();
-  const reminder = due - REMINDER_LEAD_MS;
-  const usesFallback = !demo && reminder <= now;
-  const trigger = demo
-    ? {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL as const,
-        seconds: DEMO_DELAY_SECONDS,
-        repeats: false,
-      }
-    : {
-        type: Notifications.SchedulableTriggerInputTypes.DATE as const,
-        date: new Date(usesFallback ? now + FALLBACK_DELAY_MS : reminder),
-      };
+  const plan = createReminderPlan(dueAt, Date.now(), demo);
+  await cancelTaskReminders(taskId);
   const identifier = await Notifications.scheduleNotificationAsync({
     content: {
-      title: demo ? 'Demo task reminder' : 'Upcoming task',
-      body: demo ? `${title} demo notification fired.` : `${title} is due soon.`,
-      data: { taskId, kind: demo ? 'demo' : 'task' },
+      title: 'Upcoming task',
+      body: `${title} is due soon.`,
+      data: { taskId, mode: demo ? 'demo' : 'scheduled' },
     },
-    trigger,
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: new Date(plan.triggerAt),
+      channelId: Platform.OS === 'android' ? 'tasks' : undefined,
+    },
   });
-  return { identifier, usesFallback };
-}
-
-export async function scheduleDemoReminder(taskId: string, title: string) {
-  return scheduleTaskReminder(taskId, title, new Date().toISOString(), { demo: true });
+  return { identifier, usesFallback: plan.usesFallback };
 }
