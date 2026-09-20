@@ -6,7 +6,7 @@ React Native / Expo + TypeScript assignment implementation.
 
 ## Overview
 
-Field Task Manager is an offline-first Android task application for field employees. It supports task creation/editing, status management, image attachments, local persistence, history, map markers, local reminders, and synchronization against a small `json-server` REST API.
+Field Task Manager is an offline-first Android task application for field employees. It supports task creation/editing, status management, image attachments, local persistence, history, map markers, local reminders, and synchronization with the shared YMC Plumbing REST API used by the Angular dispatcher application.
 
 ## Main features
 
@@ -22,7 +22,7 @@ Field Task Manager is an offline-first Android task application for field employ
 - Map markers for tasks containing coordinates. The seeded demo task has coordinates.
 - Persistent history for creation, edits, status changes, attachment changes, deletion and sync.
 - Offline task operations through AsyncStorage.
-- Mock REST synchronization with `json-server`.
+- Shared REST synchronization with the YMC Plumbing dispatcher API.
 - Sync states: Pending Sync, Synced, Sync Failed. Failed requests are marked visibly and retried when connectivity returns or the user taps Sync.
 - Light/dark theme toggle.
 - Accessibility labels on primary interactive task controls.
@@ -32,7 +32,7 @@ Field Task Manager is an offline-first Android task application for field employ
 - **UI:** React Navigation + small reusable components.
 - **State management:** Zustand. It keeps task mutations and app state straightforward without introducing a large Redux layer.
 - **Local storage:** AsyncStorage. The assignment data volume is intentionally small, and JSON persistence keeps the sample easy to inspect. SQLite would be a better choice for a very large task/history dataset.
-- **Sync:** `src/services/sync.ts` owns connectivity checks and mock REST synchronization. The selected conflict policy is last-write-wins using `updatedAt`; locally deleted task IDs remain in a small outbox until the server confirms their deletion.
+- **Sync:** `src/services/sync.ts` owns connectivity checks and offline outbox processing. `src/services/api.ts` maps the shared dispatcher `Job` contract to the existing mobile `Task` shape. The field app updates only workflow status; the dispatcher remains authoritative for assignment and schedule.
 - **Notifications:** `src/services/notifications.ts` owns permission handling and reminder scheduling.
 - **Task workflow:** `src/services/taskWorkflow.ts` coordinates validation, persistence and reminders without coupling that logic to the form UI.
 - **Storage validation:** persisted and remote task payloads are validated before they enter application state.
@@ -79,35 +79,28 @@ Run the core unit tests:
 npm test
 ```
 
-## Mock REST server
+## Shared YMC Plumbing API
 
-From the project root:
+Start the shared API from the Angular dispatcher project:
 
 ```bash
-npm run mock-server
+cd C:\Users\sholo\Documents\ChatGPT\Plumbing
+npm run api
 ```
 
-The server listens on port 3000.
-
-For Android Emulator, the app defaults to:
+It listens on port 3000 and is the single source of truth for both the dispatcher and field app. For Android Emulator, the app defaults to:
 
 ```text
-http://10.0.2.2:3000
+http://10.0.2.2:3000/api
 ```
 
 For a physical Android device, set the machine's LAN address:
 
 ```bash
-EXPO_PUBLIC_API_URL=http://192.168.1.50:3000 npx expo start
+EXPO_PUBLIC_API_URL=http://192.168.1.50:3000/api npx expo start
 ```
 
-The same URL can be supplied through an EAS environment variable when needed.
-
-Sample data is in:
-
-```text
-mock-server/db.json
-```
+The same URL can be supplied through an EAS environment variable when needed. The mobile app receives dispatcher-created jobs through `GET /api/jobs`, and synchronizes technician status changes through `PATCH /api/jobs/:id/status`.
 
 ## APK build
 

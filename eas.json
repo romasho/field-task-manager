@@ -6,7 +6,7 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.0.225:3000"
+        "EXPO_PUBLIC_API_URL": "http://192.168.0.225:3000/api"
       },
       "android": {
         "buildType": "apk"
@@ -14,7 +14,7 @@
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.0.225:3000"
+        "EXPO_PUBLIC_API_URL": "http://192.168.0.225:3000/api"
       },
       "android": {
         "buildType": "app-bundle"
